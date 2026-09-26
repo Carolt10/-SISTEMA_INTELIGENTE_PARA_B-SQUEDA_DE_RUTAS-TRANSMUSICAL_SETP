@@ -155,3 +155,179 @@ def buscar_rutas_directas(origen, destino):
     return rutas_encontradas
 
 # ================================================================
+
+# 5. FUNCIÓN PARA CONSTRUIR EL MAPA DE CONEXIONES
+# ================================================================
+#
+# El sistema necesita saber qué rutas pueden conectarse entre sí.
+#
+# Dos rutas tienen una conexión cuando comparten al menos un punto.
+# ================================================================
+
+def construir_conexiones():
+
+    conexiones = {}
+
+    nombres_rutas = list(rutas_transmusical.keys())
+
+    # Recorremos cada ruta
+    for ruta1 in nombres_rutas:
+
+        conexiones[ruta1] = []
+
+        # Comparamos con las demás rutas
+        for ruta2 in nombres_rutas:
+
+            # Una ruta no se conecta consigo misma
+            if ruta1 == ruta2:
+                continue
+
+            # Obtenemos los puntos de ambas rutas
+            puntos_ruta1 = set(rutas_transmusical[ruta1])
+            puntos_ruta2 = set(rutas_transmusical[ruta2])
+
+            # Buscamos puntos compartidos
+            puntos_comunes = puntos_ruta1.intersection(puntos_ruta2)
+
+            # Si existe al menos un punto común, las rutas pueden conectarse
+            if len(puntos_comunes) > 0:
+
+                conexiones[ruta1].append(
+                    (ruta2, list(puntos_comunes))
+                )
+
+    return conexiones
+# ================================================================
+
+
+# 6. BÚSQUEDA DE RUTAS CON CONEXIONES
+# ================================================================
+#
+# Esta función utiliza una búsqueda para encontrar alternativas.
+#
+# Ahora se emplea un ciclo while para explorar las posibilidades.
+#
+# Cada elemento de la cola contiene:
+#
+#     ruta actual
+#     rutas utilizadas
+#     punto de conexión
+#
+# De esta manera el sistema puede analizar:
+#
+# Ruta A
+#    ↓
+# conexión
+#    ↓
+# Ruta B
+#    ↓
+# destino
+#
+# También evita recorrer indefinidamente las mismas rutas.
+# ================================================================
+
+def buscar_rutas_con_conexiones(origen, destino):
+
+    conexiones = construir_conexiones()
+
+    soluciones = []
+
+    # Cola de búsqueda
+    cola = []
+
+    # Inicialmente analizamos todas las rutas que pasan por el punto de origen.
+    for nombre_ruta, paraderos in rutas_transmusical.items():
+
+        if origen in paraderos:
+
+            cola.append({
+                "rutas": [nombre_ruta],
+                "punto_actual": origen
+            })
+
+    # ============================================================
+    # CICLO PRINCIPAL DE BÚSQUEDA
+    # ============================================================
+
+    while cola:
+
+        # Sacamos el primer elemento de la cola
+        estado = cola.pop(0)
+
+        rutas_actuales = estado["rutas"]
+
+        ruta_actual = rutas_actuales[-1]
+
+        # Obtenemos los puntos de la ruta actual
+        puntos_actuales = rutas_transmusical[ruta_actual]
+
+        # --------------------------------------------------------
+        # REGLA:
+        # Si la ruta actual contiene el destino, encontramos una solución.
+        # --------------------------------------------------------
+
+        if destino in puntos_actuales:
+
+            soluciones.append(rutas_actuales)
+
+            continue
+
+        # --------------------------------------------------------
+        # Buscar posibles rutas conectadas
+        # --------------------------------------------------------
+
+        for ruta_siguiente, puntos_comunes in conexiones[ruta_actual]:
+
+            # Evitar ciclos.
+            #
+            # Si la ruta ya fue utilizada, no se vuelve a utilizar.
+            if ruta_siguiente in rutas_actuales:
+                continue
+
+            # ----------------------------------------------------
+            # REGLA DE CONEXIÓN
+            #
+            # La nueva ruta debe tener un punto común con la ruta anterior.
+            # ----------------------------------------------------
+
+            nuevas_rutas = rutas_actuales + [ruta_siguiente]
+
+            cola.append({
+                "rutas": nuevas_rutas,
+                "punto_actual": puntos_comunes[0]
+            })
+
+    return soluciones
+
+# ================================================================
+
+
+# 7. EVALUAR LAS RUTAS ENCONTRADAS
+# ================================================================
+#
+# Una vez encontradas las alternativas, el sistema debe determinar cuál requiere menos transbordos.
+#
+# La regla utilizada será:
+#
+# MENOR cantidad de rutas utilizadas
+#        =
+# MENOR cantidad de transbordos
+#
+# Esto NO significa que sea necesariamente la ruta real más rápida. Para calcular tiempo real se necesitarían datos de tráfico, frecuencia, horarios y tiempos de viaje.
+# ================================================================
+
+def evaluar_rutas(soluciones):
+
+    if not soluciones:
+        return None
+
+    # Ordenamos las soluciones de menor a mayor número de rutas
+    soluciones_ordenadas = sorted(
+        soluciones,
+        key=lambda ruta: len(ruta)
+    )
+
+    return soluciones_ordenadas
+
+# ================================================================
+
